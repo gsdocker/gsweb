@@ -91,3 +91,8 @@ func (context *Context) RequestMethod() string {
 func (context *Context) RequestURI() string {
 	return context.request.RequestURI
 }
+
+// Redirect redirect url
+func (context *Context) Redirect(urlStr string, code int) {
+	http.Redirect(context.responseWriter, context.request, urlStr, code)
+}
