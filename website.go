@@ -10,39 +10,77 @@ import (
 
 // WebSite The website object
 type WebSite struct {
-	gslogger.Log             // Mixin log apis
-	*Router                  // Minx Router
-	server       http.Server // http server
+	gslogger.Log // Mixin log apis
+	*Router      // Minx Router
 }
 
 // NewWebSite create new gsweb instance
-func NewWebSite(laddr string) *WebSite {
-	gsweb := &WebSite{
+func NewWebSite() *WebSite {
+	return &WebSite{
 		Log:    gslogger.Get("gsweb"),
 		Router: newRouter(),
-		server: http.Server{
+	}
+
+}
+
+// RunHTTP start listen in connection and run dispatch loop
+func (website *WebSite) RunHTTP(laddr string) {
+
+	for {
+		website.D("start http server : %s", laddr)
+
+		server := http.Server{
 			Addr:           laddr,
 			ReadTimeout:    gsconfig.Seconds("read_timeout", 10),
 			WriteTimeout:   gsconfig.Seconds("writet_imeout", 10),
 			MaxHeaderBytes: gsconfig.Int("max_header_bytes", 1<<20),
-		},
+		}
+
+		server.Handler = website
+
+		err := server.ListenAndServe()
+
+		if err != nil {
+			website.E("start http err :%s", err)
+
+			timeout := gsconfig.Seconds("retry_timeout", 5)
+
+			website.E("retry start http server %v later", timeout)
+
+			<-time.After(timeout)
+		}
+
 	}
 
-	gsweb.server.Handler = gsweb
-
-	return gsweb
 }
 
-// Run start listen in connection and run dispatch loop
-func (website *WebSite) Run() {
+// RunHTTPS start listen in connection and run dispatch loop
+func (website *WebSite) RunHTTPS(laddr string, certfile string, keyfile string) {
 
-	website.D("start http server : %s", website.server.Addr)
+	for {
+		website.D("start https server : %s", laddr)
 
-	err := website.server.ListenAndServe()
+		server := http.Server{
+			Addr:           laddr,
+			ReadTimeout:    gsconfig.Seconds("read_timeout", 10),
+			WriteTimeout:   gsconfig.Seconds("writet_imeout", 10),
+			MaxHeaderBytes: gsconfig.Int("max_header_bytes", 1<<20),
+		}
 
-	if err != nil {
-		website.E("http listen err :%s", err)
-		time.AfterFunc(gsconfig.Seconds("retry_timeout", 5), website.Run)
-		return
+		server.Handler = website
+
+		err := server.ListenAndServeTLS(certfile, keyfile)
+
+		if err != nil {
+			website.E("start https err :%s", err)
+
+			timeout := gsconfig.Seconds("retry_timeout", 5)
+
+			website.E("retry start https server %v later", timeout)
+
+			<-time.After(timeout)
+		}
+
 	}
+
 }

@@ -6,11 +6,17 @@ import (
 	"github.com/gsdocker/gslogger"
 )
 
+// Handler the http process handler
+type Handler struct {
+	name    string                   // The handler name
+	methods map[string]MethodHandler // methods
+}
+
 // Router resource router
 type Router struct {
-	gslogger.Log                   // Mixin log APIs
-	handleChain  []*requestHandler // request handle chain
-	started      bool              // the gsweb state flag
+	gslogger.Log            // Mixin log APIs
+	handleChain  []*Handler // request handle chain
+	started      bool       // the gsweb state flag
 }
 
 func newRouter() *Router {
@@ -41,9 +47,8 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handle register request handle chain node named by parameter name
+// ChainHandle register request handle chain node named by parameter name
 // the method is not thread safe,so call it before calling WebSite#Run method
-func (router *Router) Handle(name string, methods MethodHandlers) {
-
-	router.handleChain = append(router.handleChain, &requestHandler{name: name, methods: methods})
+func (router *Router) ChainHandle(name string, handler interface{}) {
+	router.handleChain = append(router.handleChain, &Handler{name: name, methods: ExtractMethods(handler)})
 }

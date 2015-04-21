@@ -6,16 +6,31 @@ import (
 	"github.com/gsdocker/gsweb"
 )
 
-func handleGet(context *gsweb.Context) error {
+type testHandler struct {
+}
+
+func (handler *testHandler) HandleGet(context *gsweb.Context) error {
+	//context.Response().WriteHeader(200)
+	context.Response().Write([]byte("hello"))
 	return context.Success()
 }
 
-func TestRun(t *testing.T) {
-	webSite := gsweb.NewWebSite(":8080")
+func TestHandler(t *testing.T) {
+	webSite := gsweb.NewWebSite()
 
-	webSite.Handle("chain0", gsweb.MethodHandlers{
-		"GET": handleGet,
-	})
+	// uri := gsweb.NewURIHandler()
+	// uri.Handle("/", &testHandler{})
+	// webSite.ChainHandle("uri", uri)
 
-	webSite.Run()
+	file := gsweb.NewFileHandler()
+
+	path, _ := file.RegisterPath("/", "./")
+
+	path.EnableGetDir(true)
+
+	webSite.ChainHandle("staticfiles", file)
+
+	go webSite.RunHTTP(":8080")
+
+	webSite.RunHTTPS(":4343", "./cert.pem", "./key.pem")
 }

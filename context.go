@@ -6,14 +6,6 @@ import (
 	"github.com/gsdocker/gserrors"
 )
 
-// MethodHandlers .
-type MethodHandlers map[string]func(context *Context) error
-
-type requestHandler struct {
-	name    string
-	methods MethodHandlers
-}
-
 // Context the request handler context
 type Context struct {
 	Router         *Router             // router belongs
@@ -44,7 +36,14 @@ func (context *Context) Forward() error {
 
 		handler := context.Router.handleChain[cursor]
 
-		if method, ok := handler.methods[context.RequestMethod()]; ok {
+		method, ok := handler.methods[context.RequestMethod()]
+
+		if !ok {
+
+			method, ok = handler.methods["UNKNOWN"]
+		}
+
+		if ok {
 			err := method(context)
 
 			gserrors.Assert(
@@ -73,7 +72,22 @@ func (context *Context) Success() error {
 	return nil
 }
 
+// Request  get response writer
+func (context *Context) Request() *http.Request {
+	return context.request
+}
+
+// Response  get response writer
+func (context *Context) Response() http.ResponseWriter {
+	return context.responseWriter
+}
+
 // RequestMethod get http request's method
 func (context *Context) RequestMethod() string {
 	return context.request.Method
+}
+
+// RequestURI get http request's URI
+func (context *Context) RequestURI() string {
+	return context.request.RequestURI
 }
