@@ -15,19 +15,47 @@ import (
 
 // App the app's config
 type App struct {
-	name       string   // The app name
-	srcPath    string   // The app's source code directory full path
-	WatchFiles []string `json:"autocompile.files"` // The files status event watcher config
+	name      string // The app name
+	srcPath   string // The app's source code directory full path
+	gswebPath string // The gsweb package path
 }
 
-func searchAppPath(packageName string) (string, error) {
+func goPaths() ([]string, error) {
 	GOPATH := os.Getenv("GOPATH")
 
 	if GOPATH == "" {
-		return "", gserrors.Newf(ErrCompile, "must set GOPATH first")
+		return nil, gserrors.Newf(ErrCompile, "must set GOPATH first")
 	}
 
-	goPath := strings.Split(GOPATH, string(os.PathListSeparator))
+	return strings.Split(GOPATH, string(os.PathListSeparator)), nil
+
+}
+
+// IsAppDuplicate .
+func IsAppDuplicate(err error) bool {
+	if gserr, ok := err.(gserrors.GSError); ok {
+		return gserr.Origin() == ErrAppDuplicate
+	}
+
+	return false
+}
+
+// IsAppNotFound .
+func IsAppNotFound(err error) bool {
+	if gserr, ok := err.(gserrors.GSError); ok {
+		return gserr.Origin() == ErrAppNotFound
+	}
+
+	return false
+}
+
+// SearchAppPath .
+func SearchAppPath(packageName string) (string, error) {
+	goPath, err := goPaths()
+
+	if err != nil {
+		return "", err
+	}
 
 	var found []string
 	for _, path := range goPath {
@@ -47,7 +75,7 @@ func searchAppPath(packageName string) (string, error) {
 		for i, path := range found {
 			stream.WriteString(fmt.Sprintf("\n\t%d) %s", i, path))
 		}
-		return "", gserrors.Newf(ErrCompile, stream.String())
+		return "", gserrors.Newf(ErrAppDuplicate, stream.String())
 	} else if len(found) == 0 {
 		var stream bytes.Buffer
 
@@ -56,16 +84,68 @@ func searchAppPath(packageName string) (string, error) {
 		for i, path := range found {
 			stream.WriteString(fmt.Sprintf("\n\t%d) %s", i, path))
 		}
-		return "", gserrors.Newf(ErrCompile, stream.String())
+		return "", gserrors.Newf(ErrAppNotFound, stream.String())
 	}
 
 	return found[0], nil
 }
 
+// CreateApp create new app package base on template
+func CreateApp(packageName string, template string, searchpath []string) (*App, error) {
+
+	_, err := SearchAppPath(packageName)
+
+	if IsAppDuplicate(err) {
+		return nil, err
+	}
+
+	gswebPath, err := SearchAppPath("github.com/gsdocker/gsweb/")
+
+	if err != nil {
+		return nil, err
+	}
+
+	templateDir := filepath.Join(gswebPath, "template")
+
+	prototypeDir := filepath.Join(templateDir, template)
+
+	if !gsos.IsDir(prototypeDir) {
+		return nil, gserrors.Newf(ErrApp, "gsweb app template not found :%s\n\t search path :%s", template, templateDir)
+	}
+
+	goPaths, err := goPaths()
+
+	if err != nil {
+		return nil, err
+	}
+
+	targetDir := filepath.Join(goPaths[0], "src", packageName)
+
+	if gsos.IsDir(targetDir) {
+		os.RemoveAll(targetDir)
+	}
+
+	err = gsos.CopyDir(prototypeDir, targetDir)
+
+	if err != nil {
+		return nil, err
+	}
+
+	app, err := LoadApp(packageName)
+
+	return app, err
+}
+
 // LoadApp load app config by app's package name
 func LoadApp(packageName string) (*App, error) {
 
-	srcPath, err := searchAppPath(packageName)
+	srcPath, err := SearchAppPath(packageName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	gswebPath, err := SearchAppPath("github.com/gsdocker/gsweb")
 
 	if err != nil {
 		return nil, err
@@ -85,8 +165,9 @@ func LoadApp(packageName string) (*App, error) {
 	}
 
 	app := &App{
-		name:    packageName,
-		srcPath: srcPath,
+		name:      packageName,
+		srcPath:   srcPath,
+		gswebPath: gswebPath,
 	}
 
 	err = json.Unmarshal(config, &app)
@@ -101,4 +182,9 @@ func (app *App) String() string {
 // SrcPath get app's source path
 func (app *App) SrcPath() string {
 	return app.srcPath
+}
+
+// GSWebPath get gsweb source path
+func (app *App) GSWebPath() string {
+	return app.gswebPath
 }

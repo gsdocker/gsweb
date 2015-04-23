@@ -1,7 +1,6 @@
 package toolkit
 
 import (
-	"bytes"
 	"crypto/md5"
 	"io"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"github.com/gsdocker/gsconfig"
 	"github.com/gsdocker/gslogger"
 	"github.com/gsdocker/gsos"
-	"github.com/howeyc/fsnotify"
 )
 
 // CompileSession .
@@ -27,7 +25,7 @@ type CompileSession struct {
 type AppCompileS struct {
 	gslogger.Log                     // Mixin log APIs
 	app          *App                // The app config object
-	fileWatcher  *fsnotify.Watcher   // The source file watcher
+	fileWatcher  *gsos.FSWatcher     // The source file watcher
 	buildDir     string              // The app's build directory
 	binaryPath   string              // The app's build target fullpath
 	md5Check     []byte              // The app's md5Check
@@ -38,7 +36,7 @@ type AppCompileS struct {
 // NewAppCompileS create new app compile service
 func NewAppCompileS(app *App) (*AppCompileS, error) {
 
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := gsos.NewWatcher()
 
 	if err != nil {
 		return nil, err
@@ -64,19 +62,11 @@ func NewAppCompileS(app *App) (*AppCompileS, error) {
 
 	cs.D("build directory : %s", cs.buildDir)
 
-	return cs, cs.fileWatcher.Watch(app.SrcPath())
-}
+	cs.fileWatcher.Add(app.GSWebPath(), false)
 
-func (cs *AppCompileS) needCompile(file string) bool {
-	extension := filepath.Ext(file)
+	cs.fileWatcher.Add(filepath.Join(app.SrcPath(), "src"), true)
 
-	for _, target := range cs.app.WatchFiles {
-		if target == extension {
-			return true
-		}
-	}
-
-	return false
+	return cs, nil
 }
 
 // Start start app compile service
@@ -86,11 +76,10 @@ func (cs *AppCompileS) Start() {
 		// build app at least once
 		cs.processBuild()
 
-		for event := range cs.fileWatcher.Event {
+		for _ = range cs.fileWatcher.Events {
 
-			if cs.needCompile(event.Name) {
-				cs.processBuild()
-			}
+			cs.processBuild()
+
 		}
 	}()
 }
@@ -100,7 +89,7 @@ func (cs *AppCompileS) processBuild() {
 
 	startTime := time.Now()
 
-	if err := cs.compileApp(); err != nil {
+	if err := cs.CompileApp(); err != nil {
 		cs.E("compile app -- failed\n%s", err)
 		return
 	}
@@ -112,10 +101,10 @@ func (cs *AppCompileS) processBuild() {
 	md5Check := cs.calcMd5Check()
 
 	cs.D("app binary md5 check is :%v", md5Check)
-
-	if bytes.Compare(md5Check, cs.md5Check) == 0 {
-		return
-	}
+	//
+	// if bytes.Compare(md5Check, cs.md5Check) == 0 {
+	// 	return
+	// }
 
 	// change file mod
 
@@ -165,8 +154,9 @@ func (cs *AppCompileS) BuildDir() string {
 	return cs.buildDir
 }
 
-func (cs *AppCompileS) compileApp() error {
-	cmd := exec.Command("go", "build", "-o", cs.binaryPath, cs.app.String())
+// CompileApp build app binary
+func (cs *AppCompileS) CompileApp() error {
+	cmd := exec.Command("go", "build", "-o", cs.binaryPath, filepath.Join(cs.app.String(), "src"))
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

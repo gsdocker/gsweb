@@ -131,6 +131,8 @@ func (runner *AppRunner) Run() {
 			runner.W("marshal runner info err :%s", err)
 		}
 
+		runner.I("app process %d started", runner.Pid)
+
 		go func() {
 			if err := currentCmd.Wait(); err != nil {
 				runner.W("app exit with error :\n\t%s", err)

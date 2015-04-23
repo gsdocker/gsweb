@@ -1,0 +1,5 @@
+[38;5;255m2015-04-23 17:19:07.532318 (main.go:21) [T] gsweb -- starting gsweb damon ...[0m
+[36m2015-04-23 17:19:07.532568 (compiler.go:64) [D] CompileS -- build directory : /var/folders/cw/0thy4f897mbfpl6jyfkc8dgw0000gn/T/github.com/gsdocker/gsweb/template/basic[0m
+[38;5;255m2015-04-23 17:19:07.533635 (compiler.go:102) [T] CompileS -- start compile app ...[0m
+[38;5;255m2015-04-23 17:19:07.609865 (compiler.go:113) [T] CompileS -- compile app -- success[0m
+[36m2015-04-23 17:19:07.611262 (compiler.go:117) [D] CompileS -- app binary md5 check is :[172 113 171 79 84 121 210 152 237 225 174 124 226 181 50 115][0m
