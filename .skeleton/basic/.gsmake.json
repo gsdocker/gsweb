@@ -1,0 +1,12 @@
+{
+    "name":"github.com/gsdocker/gsweb.basic",
+
+    "import" : [
+        {"name" : "github.com/gsdocker/gsweb","scope":"task|runtimes"},
+    ],
+    "properties" : {
+        "goinstall":[
+            "src/gsweb.basic"
+        ]
+    }
+}

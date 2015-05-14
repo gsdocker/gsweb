@@ -12,6 +12,9 @@
     "task" : {
         "gsweb" : {
             "description":"start a gsweb ci serve"
+        },
+        "gencert" : {
+            "description":"Generate a self-signed X.509 certificate for gsweb"
         }
     }
 }
