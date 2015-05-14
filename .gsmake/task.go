@@ -22,8 +22,8 @@ import (
 
 // TaskGsweb implement task gsweb
 func TaskGsweb(context *gsmake.Runner, args ...string) error {
-	context.I("hello gsweb")
-	return nil
+
+	return context.Run("setup", args...)
 }
 
 // TaskGencert implement gswebcert task
