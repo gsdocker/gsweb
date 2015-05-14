@@ -7,6 +7,9 @@
     "properties" : {
         "goinstall":[
             "src/gsweb.basic"
-        ]
+        ],
+        "gsweb" : {
+            "fswtach" :["static"]
+        }
     }
 }
