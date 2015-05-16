@@ -1,15 +1,11 @@
 package plugins
 
 import (
-	"bytes"
-	"crypto/md5"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
-	"github.com/gsdocker/gsconfig"
 	"github.com/gsdocker/gserrors"
 	"github.com/gsdocker/gsmake"
 	"github.com/gsdocker/gsos"
@@ -36,6 +32,7 @@ type buildServe struct {
 	binary    string              // binary path
 	md5Check  []byte              // binary md5
 	Notify    chan buildBrief     // compile session notify
+	cmd       *exec.Cmd           // running command
 
 }
 
@@ -64,66 +61,75 @@ func newBuildServe(runner *gsmake.Runner, target string) (*buildServe, error) {
 		Notify:    make(chan buildBrief, 100),
 	}
 
-	go serve.Start()
-
 	return serve, nil
 }
 
-func (serve *buildServe) Start() {
+func (serve *buildServe) Start() error {
 
-	serve.build()
+	if err := serve.build(); err != nil {
+		return err
+	}
+
+	serve.start()
 
 	for _ = range serve.fswatcher.Events {
-		serve.build()
+
+		serve.kill()
+
+		if err := serve.build(); err != nil {
+			return err
+		}
+
+		serve.start()
+	}
+
+	return nil
+}
+
+func (serve *buildServe) kill() {
+	if serve.cmd != nil {
+
+		for {
+			serve.runner.I("kill process %d ...", serve.cmd.Process.Pid)
+
+			err := serve.cmd.Process.Kill()
+
+			if err != nil {
+				serve.runner.W("kill process %d error\n%s", serve.cmd.Process.Pid, err)
+				<-time.After(time.Second * 5)
+				continue
+			}
+
+			break
+		}
+
 	}
 
 }
 
-func (serve *buildServe) build() {
+func (serve *buildServe) build() error {
 
 	startTime := time.Now()
 
 	err := serve.runner.Run("setup", serve.runner.StartDir())
 
 	if err != nil {
-		serve.runner.E("%s", err)
+		return err
 	}
 
-	// calc md5
-	file, err := os.Open(serve.binary)
+	serve.runner.I("build times %v", time.Now().Sub(startTime))
 
-	if err != nil {
+	return nil
+}
 
-		serve.runner.W("generate binary md5 check err :%s", err)
+func (serve *buildServe) start() {
 
-		return
-	}
+	serve.cmd = exec.Command(serve.binary, serve.runner.StartDir())
 
-	md5h := md5.New()
-	io.Copy(md5h, file)
-	md5Check := md5h.Sum([]byte(""))
+	serve.cmd.Stdout = os.Stdout
+	serve.cmd.Stderr = os.Stderr
 
-	if bytes.Compare(md5Check, serve.md5Check) == 0 {
-		return
-	}
-
-	serve.md5Check = md5Check
-
-	endTime := time.Now()
-
-	brief := buildBrief{
-		StartTime: startTime,
-		EndTime:   endTime,
-		Binary:    serve.binary,
-		Md5Check:  md5Check,
-	}
-
-	select {
-	case serve.Notify <- brief:
-	default:
-		serve.runner.W("max notify event queue size reach !!!")
-	}
-
+	serve.cmd.Start()
 }
 
 // TaskGsweb implement task gsweb
@@ -139,86 +145,5 @@ func TaskGsweb(runner *gsmake.Runner, args ...string) error {
 		return err
 	}
 
-	retryTimeout := gsconfig.Seconds("app.runner.retry_timeout", 5)
-
-	done := make(chan *exec.Cmd)
-
-	var cmd *exec.Cmd
-
-	var brief buildBrief
-
-	for {
-		// wait retry timeout or kill command
-		select {
-		case <-time.After(retryTimeout):
-			if cmd != nil {
-				continue
-			}
-
-		case currentCmd := <-done:
-			{
-				runner.I(
-					"app process %d exit => systime: %s usertime: %s",
-					currentCmd.Process.Pid,
-					currentCmd.ProcessState.SystemTime(),
-					currentCmd.ProcessState.UserTime(),
-				)
-
-				if cmd == currentCmd {
-					cmd = nil
-				}
-
-				continue
-			}
-		case build := <-build.Notify:
-			if cmd != nil && cmd.Process != nil {
-
-				for {
-
-					err := cmd.Process.Kill()
-
-					if err == nil {
-						break
-					}
-
-					runner.E("kill app -- failed\n%s", err)
-
-					<-time.After(retryTimeout)
-				}
-
-				cmd = nil
-			}
-
-			brief = build
-		}
-
-		if brief.Binary == "" {
-			continue
-		}
-
-		currentCmd := exec.Command(brief.Binary, runner.StartDir())
-
-		currentCmd.Stdout = os.Stdout
-		currentCmd.Stderr = os.Stderr
-
-		err := currentCmd.Start()
-
-		if err != nil {
-			runner.E("start app -- failed\n%s", err)
-			continue
-		}
-
-		cmd = currentCmd
-
-		runner.I("app process %d started", cmd.Process.Pid)
-
-		go func() {
-			if err := currentCmd.Wait(); err != nil {
-				runner.W("app exit with error :\n\t%s", err)
-			}
-
-			done <- currentCmd
-		}()
-	}
-
+	return build.Start()
 }
