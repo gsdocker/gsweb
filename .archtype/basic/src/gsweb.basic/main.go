@@ -3,7 +3,7 @@ package main
 import (
 	"path/filepath"
 
-	"github.com/gsdocker/gsos"
+	"github.com/gsdocker/gsos/fs"
 	"github.com/gsdocker/gsweb"
 )
 
@@ -13,7 +13,7 @@ func main() {
 
 	filehandle := gsweb.NewFileHandler()
 
-	filehandle.RegisterPath("/", filepath.Join(gsos.CurrentDir(), "static"))
+	filehandle.RegisterPath("/", filepath.Join(fs.Current(), "static"))
 
 	website.ChainHandle("static", filehandle)
 

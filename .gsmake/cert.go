@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/gsdocker/gserrors"
-	"github.com/gsdocker/gsmake"
+	"github.com/gsmake/gsmake"
 )
 
 func publicKey(priv interface{}) interface{} {

@@ -2,12 +2,14 @@
     "name":"github.com/gsdocker/gsweb.basic",
 
     "import" : [
-        {"name" : "github.com/gsdocker/gsweb","scope":"task|runtimes"}
+        {"name" : "github.com/gsdocker/gsweb","version":"v2.0"}
     ],
     "properties" : {
-        "goinstall":[
-            "src/gsweb.basic"
-        ],
+
+        "gsmake.golang.binary" :{
+           "gsweb.basic" : "./src/gsweb.basic"
+        },
+
         "gsweb" : {
             "fswtach" :["static"]
         }

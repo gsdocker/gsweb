@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gsdocker/gslogger"
-	"github.com/gsdocker/gsos"
+	"github.com/gsdocker/gsos/fs"
 )
 
 // RegisterPath the file handler's register path object
@@ -58,20 +58,20 @@ func (fileHandler *FileHandler) HandleGet(context *Context) error {
 	path := strings.Replace(uri, matchedPrefix, registerPath.path, 1)
 
 	// if the target uri is a filesystem's dir try load index.html file
-	if gsos.IsDir(path) {
+	if fs.IsDir(path) {
 		indexfile := filepath.Join(path, "index.html")
 
 		fileHandler.V("try get file : %s", indexfile)
 
 		// if target is not exist or is a directory and disable directory child list
 		// break processing and foward this request to next chain handler
-		if (!gsos.IsExist(indexfile) || gsos.IsDir(indexfile)) && !registerPath.enableListChild {
+		if (!fs.Exists(indexfile) || fs.IsDir(indexfile)) && !registerPath.enableListChild {
 			fileHandler.V("not found file : %s", indexfile)
 			goto FORWARD
 		}
 	}
 
-	if gsos.IsExist(path) {
+	if fs.Exists(path) {
 
 		fileHandler.D("GET %s handler -- found", uri)
 

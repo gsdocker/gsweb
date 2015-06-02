@@ -2,15 +2,16 @@
     "name":"github.com/gsdocker/gsweb",
 
     "import" : [
-        {"name" : "github.com/gsdocker/gsmake","scope":"task|runtimes"},
-        {"name" : "github.com/gsdocker/gsconfig","scope":"task|runtimes"},
-        {"name" : "github.com/gsdocker/gserrors","scope":"task|runtimes"},
-        {"name" : "github.com/gsdocker/gslogger","scope":"task|runtimes"},
-        {"name" : "github.com/go-fsnotify/fsnotify","scope":"task|runtimes"}
+        {"name" : "github.com/gsdocker/gsconfig","version":"v2.0"},
+        {"name" : "github.com/gsdocker/gserrors","version":"v2.0"},
+        {"name" : "github.com/gsdocker/gslogger","version":"v2.0"},
+        {"name" : "github.com/gsdocker/gsos","version":"v2.0"},
+        {"name" : "github.com/gsmake/golang","version":"v2.0"}
     ],
 
     "task" : {
         "gsweb" : {
+            "domain":"all|golang",
             "description":"start a gsweb ci serve"
         },
         "gencert" : {

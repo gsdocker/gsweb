@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/gsdocker/gserrors"
-	"github.com/gsdocker/gsmake"
-	"github.com/gsdocker/gsos"
+	"github.com/gsdocker/gsos/fs"
 	"github.com/gsdocker/gsos/fsnotify"
+	"github.com/gsmake/gsmake"
+	"github.com/gsmake/gsmake/property"
+	"github.com/gsmake/gsmake/vfs"
 )
 
 // GswebConfig .
@@ -45,10 +47,14 @@ func newBuildServe(runner *gsmake.Runner, target string) (*buildServe, error) {
 
 	var config GswebConfig
 
-	if runner.PackageProperty(runner.Name(), "gsweb", &config) {
-		for _, dir := range config.FSWatch {
-			watcher.Add(filepath.Join(runner.StartDir(), dir), true)
-		}
+	err = runner.Property("golang", runner.Name(), "gsweb", &config)
+
+	if err != nil && !vfs.NotFound(err) && !property.NotFound(err) {
+		return nil, err
+	}
+
+	for _, dir := range config.FSWatch {
+		watcher.Add(filepath.Join(runner.StartDir(), dir), true)
 	}
 
 	watcher.Add(filepath.Join(runner.StartDir(), "src", target), true)
@@ -57,7 +63,7 @@ func newBuildServe(runner *gsmake.Runner, target string) (*buildServe, error) {
 		runner:    runner,
 		fswatcher: watcher,
 		target:    target,
-		binary:    filepath.Join(runner.StartDir(), "bin", target+gsos.ExeSuffix),
+		binary:    filepath.Join(runner.StartDir(), "bin", target+fs.ExeSuffix),
 		Notify:    make(chan buildBrief, 100),
 	}
 
@@ -111,7 +117,7 @@ func (serve *buildServe) build() error {
 
 	startTime := time.Now()
 
-	err := serve.runner.Run("setup", serve.runner.StartDir())
+	err := serve.runner.Run("compile", serve.runner.StartDir())
 
 	if err != nil {
 		return err
