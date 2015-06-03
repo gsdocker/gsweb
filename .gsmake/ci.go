@@ -135,7 +135,11 @@ func (serve *buildServe) start() {
 	serve.cmd.Stdout = os.Stdout
 	serve.cmd.Stderr = os.Stderr
 
-	serve.cmd.Start()
+	err := serve.cmd.Start()
+
+	if err != nil {
+		serve.runner.E("exec :%s\n\terr:%s", serve.binary, err)
+	}
 }
 
 // TaskGsweb implement task gsweb
