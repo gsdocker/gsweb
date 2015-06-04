@@ -52,10 +52,11 @@ func (fileHandler *FileHandler) HandleGet(context *Context) error {
 		if strings.HasPrefix(uri, prefix) && len(prefix) > len(matchedPrefix) {
 			matchedPrefix = prefix
 			registerPath = path
+			break
 		}
 	}
 
-	path := strings.Replace(uri, matchedPrefix, registerPath.path, 1)
+	path := strings.Replace(uri, matchedPrefix, registerPath.path+"/", 1)
 
 	// if the target uri is a filesystem's dir try load index.html file
 	if fs.IsDir(path) {

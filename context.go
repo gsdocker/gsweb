@@ -4,10 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gsdocker/gserrors"
+	"github.com/gsdocker/gslogger"
 )
 
 // Context the request handler context
 type Context struct {
+	gslogger.Log
 	Router         *Router             // router belongs
 	responseWriter http.ResponseWriter // response writer
 	request        *http.Request       // request
@@ -20,6 +22,7 @@ func newContext(
 	response http.ResponseWriter) *Context {
 
 	return &Context{
+		Log:            router.Log,
 		Router:         router,
 		request:        request,
 		responseWriter: response,
@@ -89,7 +92,7 @@ func (context *Context) RequestMethod() string {
 
 // RequestURI get http request's URI
 func (context *Context) RequestURI() string {
-	return context.request.RequestURI
+	return context.request.URL.Path
 }
 
 // Redirect redirect url

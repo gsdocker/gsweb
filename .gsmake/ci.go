@@ -54,7 +54,14 @@ func newBuildServe(runner *gsmake.Runner, target string) (*buildServe, error) {
 	}
 
 	for _, dir := range config.FSWatch {
-		watcher.Add(filepath.Join(runner.StartDir(), dir), true)
+
+		dir := filepath.Join(runner.StartDir(), dir)
+
+		err := watcher.Add(dir, true)
+
+		if err != nil {
+			return nil, gserrors.Newf(err, "add fs watch error\n%s", dir)
+		}
 	}
 
 	watcher.Add(filepath.Join(runner.StartDir(), "src", target), true)
@@ -73,17 +80,33 @@ func newBuildServe(runner *gsmake.Runner, target string) (*buildServe, error) {
 func (serve *buildServe) Start() error {
 
 	if err := serve.build(); err != nil {
-		return err
+		serve.runner.E("buid error :%s", err)
+	} else {
+		serve.start()
 	}
 
-	serve.start()
-
 	for _ = range serve.fswatcher.Events {
+
+		for {
+
+			stop := false
+
+			select {
+			case <-serve.fswatcher.Events:
+			default:
+				stop = true
+			}
+
+			if stop {
+				break
+			}
+		}
 
 		serve.kill()
 
 		if err := serve.build(); err != nil {
-			return err
+			serve.runner.E("buid error :%s", err)
+			continue
 		}
 
 		serve.start()
